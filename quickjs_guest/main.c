@@ -14,14 +14,16 @@ int print_output(const char *message) {
   return res;
 }
 
-int guest_function(const char *from_host) {
+int guest_function() {
   JSRuntime *rt;
   JSContext *ctx;
   JSValue result;
   int ret;
+  
 
   rt = JS_NewRuntime();
   ctx = JS_NewContext(rt);
+  hl_abort_with_code(12);
 
   char* code = "function fib(n) { if (n <= 1) return n; return fib(n - 1) + fib(n - 2); } fib(11);";
 
@@ -31,7 +33,7 @@ int guest_function(const char *from_host) {
   // Check for errors
   if (JS_IsException(result)) {
     JSValue exception = JS_GetException(ctx);
-    fprintf(stderr, "Error: %s\n", JS_ToCString(ctx, exception));
+    printf("Error: %s\n", JS_ToCString(ctx, exception));
     JS_FreeValue(ctx, exception);
     ret = 1;
   } else {
@@ -50,7 +52,7 @@ int guest_function(const char *from_host) {
 }
 
 HYPERLIGHT_WRAP_FUNCTION(print_output, Int, 1, String);
-HYPERLIGHT_WRAP_FUNCTION(guest_function, Int, 1, String);
+HYPERLIGHT_WRAP_FUNCTION(guest_function, Int, 0);
 
 void hyperlight_main(void) {
   HYPERLIGHT_REGISTER_FUNCTION("PrintOutput", print_output);

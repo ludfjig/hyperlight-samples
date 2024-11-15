@@ -1987,16 +1987,12 @@ static int64_t get_time_ns(void)
 /* more portable, but does not work if the date is updated */
 static int64_t get_time_ms(void)
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+    return 0;
 }
 
 static int64_t get_time_ns(void)
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (int64_t)tv.tv_sec * 1000000000 + (tv.tv_usec * 1000);
+    return 0;
 }
 #endif
 

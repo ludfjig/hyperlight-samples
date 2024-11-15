@@ -28,9 +28,9 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
-// #include <sys/time.h>, not available in hyperlight
-// #include <time.h>, not available in hyperlight
-// #include <fenv.h>, not available in hyperlight
+#include <sys/time.h>
+#include <time.h>
+#include <fenv.h>
 #include <math.h>
 // #if defined(__APPLE__)
 // #include <malloc/malloc.h>
@@ -46,6 +46,9 @@
 #include "libregexp.h"
 #include "libbf.h"
 #include "printf.h"
+#include "hyperlight_guest.h"
+
+int x = -1;
 
 #define OPTIMIZE         1
 #define SHORT_OPCODES    1
@@ -1720,7 +1723,7 @@ static void *js_def_malloc(JSMallocState *s, size_t size)
     if (unlikely(s->malloc_size + size > s->malloc_limit))
         return NULL;
 
-    ptr = malloc(size);
+    ptr = hlmalloc(size);
     if (!ptr)
         return NULL;
 
@@ -1736,7 +1739,7 @@ static void js_def_free(JSMallocState *s, void *ptr)
 
     s->malloc_count--;
     s->malloc_size -= js_def_malloc_usable_size(ptr) + MALLOC_OVERHEAD;
-    free(ptr);
+    hlfree(ptr);
 }
 
 static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
@@ -1752,13 +1755,13 @@ static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
     if (size == 0) {
         s->malloc_count--;
         s->malloc_size -= old_size + MALLOC_OVERHEAD;
-        free(ptr);
+        hlfree(ptr);
         return NULL;
     }
     if (s->malloc_size + size - old_size > s->malloc_limit)
         return NULL;
 
-    ptr = realloc(ptr, size);
+    ptr = hlrealloc(ptr, size);
     if (!ptr)
         return NULL;
 
@@ -2156,6 +2159,7 @@ JSContext *JS_NewContextRaw(JSRuntime *rt)
 
 JSContext *JS_NewContext(JSRuntime *rt)
 {
+
     JSContext *ctx;
 
     ctx = JS_NewContextRaw(rt);
@@ -2163,6 +2167,7 @@ JSContext *JS_NewContext(JSRuntime *rt)
         return NULL;
 
     JS_AddIntrinsicBaseObjects(ctx);
+    hl_abort_with_code(59);
     JS_AddIntrinsicDate(ctx);
     JS_AddIntrinsicEval(ctx);
     JS_AddIntrinsicStringNormalize(ctx);
@@ -4849,7 +4854,9 @@ JSValue JS_NewObjectProtoClass(JSContext *ctx, JSValueConst proto_val,
 {
     JSShape *sh;
     JSObject *proto;
-
+    if (x == 6) {
+        hl_abort_with_code(55);
+    }
     proto = get_proto_obj(proto_val);
     sh = find_hashed_shape_proto(ctx->rt, proto);
     if (likely(sh)) {
@@ -5496,6 +5503,9 @@ static void free_zero_refcount(JSRuntime *rt)
 /* called with the ref_count of 'v' reaches zero. */
 void __JS_FreeValueRT(JSRuntime *rt, JSValue v)
 {
+    if (x == 13) {
+        hl_abort_with_code(14);
+    }
     uint32_t tag = JS_VALUE_GET_TAG(v);
 
 #ifdef DUMP_FREE
@@ -6229,7 +6239,7 @@ void JS_ComputeMemoryUsage(JSRuntime *rt, JSMemoryUsage *s)
 
 void JS_DumpMemoryUsage(FILE *fp, const JSMemoryUsage *s, JSRuntime *rt)
 {
-    fprintf(fp, "QuickJS memory usage -- "
+    printf("QuickJS memory usage -- "
 #ifdef CONFIG_BIGNUM
             "BigNum "
 #endif
@@ -6255,14 +6265,14 @@ void JS_DumpMemoryUsage(FILE *fp, const JSMemoryUsage *s, JSRuntime *rt)
                 unsigned int size1 = js_malloc_usable_size_rt(rt, p);
                 if (size1 >= size) {
                     usage_size_ok = 1;
-                    fprintf(fp, "  %3u + %-2u  %s\n",
+                    printf("  %3u + %-2u  %s\n",
                             size, size1 - size, object_types[i].name);
                 }
                 js_free_rt(rt, p);
             }
         }
         if (!usage_size_ok) {
-            fprintf(fp, "  malloc_usable_size unavailable\n");
+            printf("  malloc_usable_size unavailable\n");
         }
         {
             int obj_classes[JS_CLASS_INIT_COUNT + 1] = { 0 };
@@ -6276,82 +6286,82 @@ void JS_DumpMemoryUsage(FILE *fp, const JSMemoryUsage *s, JSRuntime *rt)
                     obj_classes[min_uint32(p->class_id, JS_CLASS_INIT_COUNT)]++;
                 }
             }
-            fprintf(fp, "\n" "JSObject classes\n");
+            printf("\n" "JSObject classes\n");
             if (obj_classes[0])
-                fprintf(fp, "  %5d  %2.0d %s\n", obj_classes[0], 0, "none");
+                printf("  %5d  %2.0d %s\n", obj_classes[0], 0, "none");
             for (class_id = 1; class_id < JS_CLASS_INIT_COUNT; class_id++) {
                 if (obj_classes[class_id] && class_id < rt->class_count) {
                     char buf[ATOM_GET_STR_BUF_SIZE];
-                    fprintf(fp, "  %5d  %2.0d %s\n", obj_classes[class_id], class_id,
+                    printf("  %5d  %2.0d %s\n", obj_classes[class_id], class_id,
                             JS_AtomGetStrRT(rt, buf, sizeof(buf), rt->class_array[class_id].class_name));
                 }
             }
             if (obj_classes[JS_CLASS_INIT_COUNT])
-                fprintf(fp, "  %5d  %2.0d %s\n", obj_classes[JS_CLASS_INIT_COUNT], 0, "other");
+                printf("  %5d  %2.0d %s\n", obj_classes[JS_CLASS_INIT_COUNT], 0, "other");
         }
-        fprintf(fp, "\n");
+        printf("\n");
     }
 #endif
-    fprintf(fp, "%-20s %8s %8s\n", "NAME", "COUNT", "SIZE");
+    printf("%-20s %8s %8s\n", "NAME", "COUNT", "SIZE");
 
     if (s->malloc_count) {
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per block)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per block)\n",
                 "memory allocated", s->malloc_count, s->malloc_size,
                 (double)s->malloc_size / s->malloc_count);
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%d overhead, %0.1f average slack)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%d overhead, %0.1f average slack)\n",
                 "memory used", s->memory_used_count, s->memory_used_size,
                 MALLOC_OVERHEAD, ((double)(s->malloc_size - s->memory_used_size) /
                                   s->memory_used_count));
     }
     if (s->atom_count) {
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per atom)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per atom)\n",
                 "atoms", s->atom_count, s->atom_size,
                 (double)s->atom_size / s->atom_count);
     }
     if (s->str_count) {
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per string)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per string)\n",
                 "strings", s->str_count, s->str_size,
                 (double)s->str_size / s->str_count);
     }
     if (s->obj_count) {
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
                 "objects", s->obj_count, s->obj_size,
                 (double)s->obj_size / s->obj_count);
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
                 "  properties", s->prop_count, s->prop_size,
                 (double)s->prop_count / s->obj_count);
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per shape)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per shape)\n",
                 "  shapes", s->shape_count, s->shape_size,
                 (double)s->shape_size / s->shape_count);
     }
     if (s->js_func_count) {
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"\n",
+        printf("%-20s %8"PRId64" %8"PRId64"\n",
                 "bytecode functions", s->js_func_count, s->js_func_size);
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
+        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
                 "  bytecode", s->js_func_count, s->js_func_code_size,
                 (double)s->js_func_code_size / s->js_func_count);
         if (s->js_func_pc2line_count) {
-            fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
+            printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
                     "  pc2line", s->js_func_pc2line_count,
                     s->js_func_pc2line_size,
                     (double)s->js_func_pc2line_size / s->js_func_pc2line_count);
         }
     }
     if (s->c_func_count) {
-        fprintf(fp, "%-20s %8"PRId64"\n", "C functions", s->c_func_count);
+        printf("%-20s %8"PRId64"\n", "C functions", s->c_func_count);
     }
     if (s->array_count) {
-        fprintf(fp, "%-20s %8"PRId64"\n", "arrays", s->array_count);
+        printf("%-20s %8"PRId64"\n", "arrays", s->array_count);
         if (s->fast_array_count) {
-            fprintf(fp, "%-20s %8"PRId64"\n", "  fast arrays", s->fast_array_count);
-            fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per fast array)\n",
+            printf("%-20s %8"PRId64"\n", "  fast arrays", s->fast_array_count);
+            printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per fast array)\n",
                     "  elements", s->fast_array_elements,
                     s->fast_array_elements * (int)sizeof(JSValue),
                     (double)s->fast_array_elements / s->fast_array_count);
         }
     }
     if (s->binary_object_count) {
-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"\n",
+        printf("%-20s %8"PRId64" %8"PRId64"\n",
                 "binary objects", s->binary_object_count, s->binary_object_size);
     }
 }
@@ -7098,9 +7108,13 @@ static int JS_AutoInitProperty(JSContext *ctx, JSObject *p, JSAtom prop,
         return -1;
 
     realm = js_autoinit_get_realm(pr);
-    func = js_autoinit_func_table[js_autoinit_get_id(pr)];
+    int id = js_autoinit_get_id(pr); // 0
+    func = js_autoinit_func_table[id];
     /* 'func' shall not modify the object properties 'pr' */
     val = func(realm, p, prop, pr->u.init.opaque);
+    if (x == 4) {
+        hl_abort_with_code(id);
+    }
     js_autoinit_free(ctx->rt, pr);
     prs->flags &= ~JS_PROP_TMASK;
     pr->u.value = JS_UNDEFINED;
@@ -7118,6 +7132,8 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
     JSProperty *pr;
     JSShapeProperty *prs;
     uint32_t tag;
+
+
 
     tag = JS_VALUE_GET_TAG(obj);
     if (unlikely(tag != JS_TAG_OBJECT)) {
@@ -7161,8 +7177,11 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
         prs = find_own_property(&pr, p, prop);
         if (prs) {
             /* found */
+
             if (unlikely(prs->flags & JS_PROP_TMASK)) {
+
                 if ((prs->flags & JS_PROP_TMASK) == JS_PROP_GETSET) {
+
                     if (unlikely(!pr->u.getset.getter)) {
                         return JS_UNDEFINED;
                     } else {
@@ -7172,17 +7191,26 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
                         return JS_CallFree(ctx, func, this_obj, 0, NULL);
                     }
                 } else if ((prs->flags & JS_PROP_TMASK) == JS_PROP_VARREF) {
+                    
                     JSValue val = *pr->u.var_ref->pvalue;
                     if (unlikely(JS_IsUninitialized(val)))
                         return JS_ThrowReferenceErrorUninitialized(ctx, prs->atom);
                     return JS_DupValue(ctx, val);
                 } else if ((prs->flags & JS_PROP_TMASK) == JS_PROP_AUTOINIT) {
                     /* Instantiate property and retry */
-                    if (JS_AutoInitProperty(ctx, p, prop, pr, prs))
+                    if (x == 3) {
+                        x = 4;
+                    } 
+                    if (JS_AutoInitProperty(ctx, p, prop, pr, prs)) {
+                        if (x == 4) {
+                            hl_abort_with_code(5);
+                        }
                         return JS_EXCEPTION;
+                    }
                     continue;
                 }
             } else {
+
                 return JS_DupValue(ctx, pr->u.value);
             }
         }
@@ -7249,9 +7277,11 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
         if (!p)
             break;
     }
+
     if (unlikely(throw_ref_error)) {
         return JS_ThrowReferenceErrorNotDefined(ctx, prop);
     } else {
+
         return JS_UNDEFINED;
     }
 }
@@ -15624,8 +15654,13 @@ static JSValue js_instantiate_prototype(JSContext *ctx, JSObject *p, JSAtom atom
     JSValue obj, this_val;
     int ret;
 
+
     this_val = JS_MKPTR(JS_TAG_OBJECT, p);
+    if (x == 4) {
+        x = 5;
+    }
     obj = JS_NewObject(ctx);
+    hl_abort_with_code(8);
     if (JS_IsException(obj))
         return JS_EXCEPTION;
     set_cycle_flag(ctx, obj);
@@ -36694,6 +36729,7 @@ static int JS_InstantiateFunctionListItem(JSContext *ctx, JSValueConst obj,
     JSValue val;
     int prop_flags = e->prop_flags;
 
+
     switch(e->def_type) {
     case JS_DEF_ALIAS: /* using autoinit for aliases is not safe */
         {
@@ -36703,7 +36739,16 @@ static int JS_InstantiateFunctionListItem(JSContext *ctx, JSValueConst obj,
                 val = JS_GetProperty(ctx, obj, atom1);
                 break;
             case 0:
+                int test = 0;
+                if (x == 1) {
+                    test = 1;
+                    x = 3;
+                }
                 val = JS_GetProperty(ctx, ctx->global_obj, atom1);
+                if (test == 1) {
+                    x = 1;
+                    hl_abort_with_code(1);
+                }
                 break;
             case 1:
                 val = JS_GetProperty(ctx, ctx->class_proto[JS_CLASS_ARRAY], atom1);
@@ -36789,6 +36834,9 @@ void JS_SetPropertyFunctionList(JSContext *ctx, JSValueConst obj,
         const JSCFunctionListEntry *e = &tab[i];
         JSAtom atom = find_atom(ctx, e->name);
         JS_InstantiateFunctionListItem(ctx, obj, atom, e);
+        if (x == 1) {
+            hl_abort_with_code(2);
+        }
         JS_FreeAtom(ctx, atom);
     }
 }
@@ -43092,8 +43140,8 @@ static uint64_t xorshift64star(uint64_t *pstate)
 static void js_random_init(JSContext *ctx)
 {
     struct timeval tv;
-    gettimeofday(&tv, NULL);
-    ctx->random_state = ((int64_t)tv.tv_sec * 1000000) + tv.tv_usec;
+    //gettimeofday(&tv, NULL);
+    ctx->random_state = 0;
     /* the state must be non zero */
     if (ctx->random_state == 0)
         ctx->random_state = 1;
@@ -43170,52 +43218,7 @@ static const JSCFunctionListEntry js_math_obj[] = {
    between UTC time and local time 'd' in minutes */
 static int getTimezoneOffset(int64_t time)
 {
-    time_t ti;
-    int res;
-    
-    time /= 1000; /* convert to seconds */
-    if (sizeof(time_t) == 4) {
-        /* on 32-bit systems, we need to clamp the time value to the
-           range of `time_t`. This is better than truncating values to
-           32 bits and hopefully provides the same result as 64-bit
-           implementation of localtime_r.
-         */
-        if ((time_t)-1 < 0) {
-            if (time < INT32_MIN) {
-                time = INT32_MIN;
-            } else if (time > INT32_MAX) {
-                time = INT32_MAX;
-            }
-        } else {
-            if (time < 0) {
-                time = 0;
-            } else if (time > UINT32_MAX) {
-                time = UINT32_MAX;
-            }
-        }
-    }
-    ti = time;
-#if defined(_WIN32)
-    {
-        struct tm *tm;
-        time_t gm_ti, loc_ti;
-        
-        tm = gmtime(&ti);
-        gm_ti = mktime(tm);
-        
-        tm = localtime(&ti);
-        loc_ti = mktime(tm);
-
-        res = (gm_ti - loc_ti) / 60;
-    }
-#else
-    {
-        struct tm tm;
-        localtime_r(&ti, &tm);
-        res = -tm.tm_gmtoff / 60;
-    }
-#endif
-    return res;
+    return 0;
 }
 
 #if 0
@@ -49602,9 +49605,7 @@ static JSValue get_date_string(JSContext *ctx, JSValueConst this_val,
 
 /* OS dependent: return the UTC time in ms since 1970. */
 static int64_t date_now(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+    return (int64_t)0;
 }
 
 static JSValue js_date_constructor(JSContext *ctx, JSValueConst new_target,
@@ -52458,7 +52459,9 @@ void JS_AddIntrinsicBaseObjects(JSContext *ctx)
                                countof(js_number_proto_funcs));
     number_obj = JS_NewGlobalCConstructor(ctx, "Number", js_number_constructor, 1,
                                           ctx->class_proto[JS_CLASS_NUMBER]);
+    x = 1;
     JS_SetPropertyFunctionList(ctx, number_obj, js_number_funcs, countof(js_number_funcs));
+    hl_abort_with_code(1);
 
     /* Boolean */
     ctx->class_proto[JS_CLASS_BOOLEAN] = JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT],
