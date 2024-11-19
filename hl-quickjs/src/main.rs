@@ -1,3 +1,4 @@
+use hyperlight_host::sandbox::SandboxConfiguration;
 // use http_body_util::BodyExt;
 // use hyper::body;
 use hyperlight_host::sandbox_state::sandbox::EvolvableSandbox;
@@ -19,7 +20,11 @@ use hyperlight_host::UninitializedSandbox;
 
 fn main() {
     let guest_binary = GuestBinary::FilePath("../guest".to_string());
-    let sandbox = UninitializedSandbox::new(guest_binary, None, None, None).unwrap();
+    let mut cfg = SandboxConfiguration::default();
+    cfg.set_heap_size(2 * 128000000);
+    cfg.set_stack_size(2 * 128000000);
+
+    let sandbox = UninitializedSandbox::new(guest_binary, Some(cfg), None, None).unwrap();
     let mut multiusesandbox: MultiUseSandbox = sandbox.evolve(Noop::default()).unwrap();
     multiusesandbox
         .call_guest_function_by_name("GuestMethod1", hyperlight_host::func::ReturnType::Int, None)

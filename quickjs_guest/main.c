@@ -23,7 +23,6 @@ int guest_function() {
 
   rt = JS_NewRuntime();
   ctx = JS_NewContext(rt);
-  hl_abort_with_code(12);
 
   char* code = "function fib(n) { if (n <= 1) return n; return fib(n - 1) + fib(n - 2); } fib(11);";
 

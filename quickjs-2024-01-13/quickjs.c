@@ -1709,7 +1709,7 @@ static size_t js_def_malloc_usable_size(const void *ptr)
     return 0;
 #else
     /* change this to `return 0;` if compilation fails */
-    return malloc_usable_size((void *)ptr);
+    return 0;
 #endif
 }
 
@@ -1724,8 +1724,6 @@ static void *js_def_malloc(JSMallocState *s, size_t size)
         return NULL;
 
     ptr = hlmalloc(size);
-    if (!ptr)
-        return NULL;
 
     s->malloc_count++;
     s->malloc_size += js_def_malloc_usable_size(ptr) + MALLOC_OVERHEAD;
@@ -2165,9 +2163,7 @@ JSContext *JS_NewContext(JSRuntime *rt)
     ctx = JS_NewContextRaw(rt);
     if (!ctx)
         return NULL;
-
     JS_AddIntrinsicBaseObjects(ctx);
-    hl_abort_with_code(59);
     JS_AddIntrinsicDate(ctx);
     JS_AddIntrinsicEval(ctx);
     JS_AddIntrinsicStringNormalize(ctx);
@@ -4854,9 +4850,8 @@ JSValue JS_NewObjectProtoClass(JSContext *ctx, JSValueConst proto_val,
 {
     JSShape *sh;
     JSObject *proto;
-    if (x == 6) {
-        hl_abort_with_code(55);
-    }
+
+
     proto = get_proto_obj(proto_val);
     sh = find_hashed_shape_proto(ctx->rt, proto);
     if (likely(sh)) {
@@ -4940,7 +4935,10 @@ JSValue JS_NewArray(JSContext *ctx)
 
 JSValue JS_NewObject(JSContext *ctx)
 {
-    /* inline JS_NewObjectClass(ctx, JS_CLASS_OBJECT); */
+    if (x == 1) {
+        hl_abort_with_code_and_message((int)ctx, "JS_NewObject: ctx is null");
+        x = 0;
+    }
     return JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT], JS_CLASS_OBJECT);
 }
 
@@ -5503,9 +5501,6 @@ static void free_zero_refcount(JSRuntime *rt)
 /* called with the ref_count of 'v' reaches zero. */
 void __JS_FreeValueRT(JSRuntime *rt, JSValue v)
 {
-    if (x == 13) {
-        hl_abort_with_code(14);
-    }
     uint32_t tag = JS_VALUE_GET_TAG(v);
 
 #ifdef DUMP_FREE
@@ -7107,14 +7102,12 @@ static int JS_AutoInitProperty(JSContext *ctx, JSObject *p, JSAtom prop,
     if (js_shape_prepare_update(ctx, p, &prs))
         return -1;
 
-    realm = js_autoinit_get_realm(pr);
+    realm = js_autoinit_get_realm(pr); // Returns NULL
+    
     int id = js_autoinit_get_id(pr); // 0
     func = js_autoinit_func_table[id];
     /* 'func' shall not modify the object properties 'pr' */
     val = func(realm, p, prop, pr->u.init.opaque);
-    if (x == 4) {
-        hl_abort_with_code(id);
-    }
     js_autoinit_free(ctx->rt, pr);
     prs->flags &= ~JS_PROP_TMASK;
     pr->u.value = JS_UNDEFINED;
@@ -7132,8 +7125,6 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
     JSProperty *pr;
     JSShapeProperty *prs;
     uint32_t tag;
-
-
 
     tag = JS_VALUE_GET_TAG(obj);
     if (unlikely(tag != JS_TAG_OBJECT)) {
@@ -7198,13 +7189,7 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
                     return JS_DupValue(ctx, val);
                 } else if ((prs->flags & JS_PROP_TMASK) == JS_PROP_AUTOINIT) {
                     /* Instantiate property and retry */
-                    if (x == 3) {
-                        x = 4;
-                    } 
                     if (JS_AutoInitProperty(ctx, p, prop, pr, prs)) {
-                        if (x == 4) {
-                            hl_abort_with_code(5);
-                        }
                         return JS_EXCEPTION;
                     }
                     continue;
@@ -15654,13 +15639,11 @@ static JSValue js_instantiate_prototype(JSContext *ctx, JSObject *p, JSAtom atom
     JSValue obj, this_val;
     int ret;
 
-
     this_val = JS_MKPTR(JS_TAG_OBJECT, p);
-    if (x == 4) {
-        x = 5;
-    }
+
+    x = 1;
+    
     obj = JS_NewObject(ctx);
-    hl_abort_with_code(8);
     if (JS_IsException(obj))
         return JS_EXCEPTION;
     set_cycle_flag(ctx, obj);
@@ -36729,7 +36712,6 @@ static int JS_InstantiateFunctionListItem(JSContext *ctx, JSValueConst obj,
     JSValue val;
     int prop_flags = e->prop_flags;
 
-
     switch(e->def_type) {
     case JS_DEF_ALIAS: /* using autoinit for aliases is not safe */
         {
@@ -36739,16 +36721,7 @@ static int JS_InstantiateFunctionListItem(JSContext *ctx, JSValueConst obj,
                 val = JS_GetProperty(ctx, obj, atom1);
                 break;
             case 0:
-                int test = 0;
-                if (x == 1) {
-                    test = 1;
-                    x = 3;
-                }
                 val = JS_GetProperty(ctx, ctx->global_obj, atom1);
-                if (test == 1) {
-                    x = 1;
-                    hl_abort_with_code(1);
-                }
                 break;
             case 1:
                 val = JS_GetProperty(ctx, ctx->class_proto[JS_CLASS_ARRAY], atom1);
@@ -36834,9 +36807,6 @@ void JS_SetPropertyFunctionList(JSContext *ctx, JSValueConst obj,
         const JSCFunctionListEntry *e = &tab[i];
         JSAtom atom = find_atom(ctx, e->name);
         JS_InstantiateFunctionListItem(ctx, obj, atom, e);
-        if (x == 1) {
-            hl_abort_with_code(2);
-        }
         JS_FreeAtom(ctx, atom);
     }
 }
@@ -52338,7 +52308,6 @@ void JS_AddIntrinsicBaseObjects(JSContext *ctx)
     int i;
     JSValueConst obj, number_obj;
     JSValue obj1;
-
     ctx->throw_type_error = JS_NewCFunction(ctx, js_throw_type_error, NULL, 0);
 
     /* add caller and arguments properties to throw a TypeError */
@@ -52459,9 +52428,7 @@ void JS_AddIntrinsicBaseObjects(JSContext *ctx)
                                countof(js_number_proto_funcs));
     number_obj = JS_NewGlobalCConstructor(ctx, "Number", js_number_constructor, 1,
                                           ctx->class_proto[JS_CLASS_NUMBER]);
-    x = 1;
     JS_SetPropertyFunctionList(ctx, number_obj, js_number_funcs, countof(js_number_funcs));
-    hl_abort_with_code(1);
 
     /* Boolean */
     ctx->class_proto[JS_CLASS_BOOLEAN] = JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT],

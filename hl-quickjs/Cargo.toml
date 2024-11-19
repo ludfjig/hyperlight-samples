@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hyperlight-host = { path = "../../hyperlight-new/src/hyperlight_host"}
+hyperlight-host = { path = "../../hyperlight-new/src/hyperlight_host" }
 hyper = { version = "1", features = ["full"] }
 tokio = { version = "1", features = ["full"] }
 http-body-util = "0.1"
