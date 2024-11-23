@@ -20,8 +20,9 @@ int guest_function() {
   JSValue result;
   int ret;
   
-
+  printf("Creating QuickJS runtime...\n");
   rt = JS_NewRuntime();
+  printf("Creating QuickJS context...\n");
   ctx = JS_NewContext(rt);
 
   char* code = "function fib(n) { if (n <= 1) return n; return fib(n - 1) + fib(n - 2); } fib(11);";

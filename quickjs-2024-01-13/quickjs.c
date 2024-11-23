@@ -7103,7 +7103,7 @@ static int JS_AutoInitProperty(JSContext *ctx, JSObject *p, JSAtom prop,
         return -1;
 
     realm = js_autoinit_get_realm(pr); // Returns NULL
-    
+    printf("      JS_AutoInitProperty: pr->u.init.realm_and_id: %lu\n", pr->u.init.realm_and_id);
     int id = js_autoinit_get_id(pr); // 0
     func = js_autoinit_func_table[id];
     /* 'func' shall not modify the object properties 'pr' */
@@ -7168,7 +7168,7 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
         prs = find_own_property(&pr, p, prop);
         if (prs) {
             /* found */
-
+            printf("    JS_GetPropertyInternal: prs: %x, pr->u.init.realm_and_id: %lu, p: %p\n", prs, pr->u.init.realm_and_id, p);
             if (unlikely(prs->flags & JS_PROP_TMASK)) {
 
                 if ((prs->flags & JS_PROP_TMASK) == JS_PROP_GETSET) {
@@ -36802,10 +36802,11 @@ void JS_SetPropertyFunctionList(JSContext *ctx, JSValueConst obj,
                                 const JSCFunctionListEntry *tab, int len)
 {
     int i;
-
+    printf("JS_SetPropertyFunctionList. Length:%d\n", len);
     for (i = 0; i < len; i++) {
         const JSCFunctionListEntry *e = &tab[i];
         JSAtom atom = find_atom(ctx, e->name);
+        printf("  %s\n", e->name);
         JS_InstantiateFunctionListItem(ctx, obj, atom, e);
         JS_FreeAtom(ctx, atom);
     }
