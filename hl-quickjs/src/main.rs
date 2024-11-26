@@ -23,6 +23,7 @@ fn main() {
     let mut cfg = SandboxConfiguration::default();
     cfg.set_heap_size(2 * 128000000);
     cfg.set_stack_size(2 * 128000000);
+    cfg.set_input_data_size(2 * 128000000);
 
     let sandbox = UninitializedSandbox::new(guest_binary, Some(cfg), None, None).unwrap();
     let mut multiusesandbox: MultiUseSandbox = sandbox.evolve(Noop::default()).unwrap();

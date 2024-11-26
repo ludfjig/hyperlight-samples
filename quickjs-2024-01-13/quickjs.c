@@ -48,8 +48,6 @@
 #include "printf.h"
 #include "hyperlight_guest.h"
 
-int x = -1;
-
 #define OPTIMIZE         1
 #define SHORT_OPCODES    1
 #if defined(EMSCRIPTEN)
@@ -2157,12 +2155,12 @@ JSContext *JS_NewContextRaw(JSRuntime *rt)
 
 JSContext *JS_NewContext(JSRuntime *rt)
 {
-
     JSContext *ctx;
 
     ctx = JS_NewContextRaw(rt);
     if (!ctx)
         return NULL;
+
     JS_AddIntrinsicBaseObjects(ctx);
     JS_AddIntrinsicDate(ctx);
     JS_AddIntrinsicEval(ctx);
@@ -4851,7 +4849,6 @@ JSValue JS_NewObjectProtoClass(JSContext *ctx, JSValueConst proto_val,
     JSShape *sh;
     JSObject *proto;
 
-
     proto = get_proto_obj(proto_val);
     sh = find_hashed_shape_proto(ctx->rt, proto);
     if (likely(sh)) {
@@ -4935,10 +4932,7 @@ JSValue JS_NewArray(JSContext *ctx)
 
 JSValue JS_NewObject(JSContext *ctx)
 {
-    if (x == 1) {
-        hl_abort_with_code_and_message((int)ctx, "JS_NewObject: ctx is null");
-        x = 0;
-    }
+    /* inline JS_NewObjectClass(ctx, JS_CLASS_OBJECT); */
     return JS_NewObjectProtoClass(ctx, ctx->class_proto[JS_CLASS_OBJECT], JS_CLASS_OBJECT);
 }
 
@@ -7102,10 +7096,8 @@ static int JS_AutoInitProperty(JSContext *ctx, JSObject *p, JSAtom prop,
     if (js_shape_prepare_update(ctx, p, &prs))
         return -1;
 
-    realm = js_autoinit_get_realm(pr); // Returns NULL
-    printf("      JS_AutoInitProperty: pr->u.init.realm_and_id: %lu\n", pr->u.init.realm_and_id);
-    int id = js_autoinit_get_id(pr); // 0
-    func = js_autoinit_func_table[id];
+    realm = js_autoinit_get_realm(pr);
+    func = js_autoinit_func_table[js_autoinit_get_id(pr)];
     /* 'func' shall not modify the object properties 'pr' */
     val = func(realm, p, prop, pr->u.init.opaque);
     js_autoinit_free(ctx->rt, pr);
@@ -7168,11 +7160,8 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
         prs = find_own_property(&pr, p, prop);
         if (prs) {
             /* found */
-            printf("    JS_GetPropertyInternal: prs: %x, pr->u.init.realm_and_id: %lu, p: %p\n", prs, pr->u.init.realm_and_id, p);
             if (unlikely(prs->flags & JS_PROP_TMASK)) {
-
                 if ((prs->flags & JS_PROP_TMASK) == JS_PROP_GETSET) {
-
                     if (unlikely(!pr->u.getset.getter)) {
                         return JS_UNDEFINED;
                     } else {
@@ -7182,20 +7171,17 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
                         return JS_CallFree(ctx, func, this_obj, 0, NULL);
                     }
                 } else if ((prs->flags & JS_PROP_TMASK) == JS_PROP_VARREF) {
-                    
                     JSValue val = *pr->u.var_ref->pvalue;
                     if (unlikely(JS_IsUninitialized(val)))
                         return JS_ThrowReferenceErrorUninitialized(ctx, prs->atom);
                     return JS_DupValue(ctx, val);
                 } else if ((prs->flags & JS_PROP_TMASK) == JS_PROP_AUTOINIT) {
                     /* Instantiate property and retry */
-                    if (JS_AutoInitProperty(ctx, p, prop, pr, prs)) {
+                    if (JS_AutoInitProperty(ctx, p, prop, pr, prs)) 
                         return JS_EXCEPTION;
-                    }
                     continue;
                 }
             } else {
-
                 return JS_DupValue(ctx, pr->u.value);
             }
         }
@@ -7262,11 +7248,9 @@ JSValue JS_GetPropertyInternal(JSContext *ctx, JSValueConst obj,
         if (!p)
             break;
     }
-
     if (unlikely(throw_ref_error)) {
         return JS_ThrowReferenceErrorNotDefined(ctx, prop);
     } else {
-
         return JS_UNDEFINED;
     }
 }
@@ -15640,9 +15624,6 @@ static JSValue js_instantiate_prototype(JSContext *ctx, JSObject *p, JSAtom atom
     int ret;
 
     this_val = JS_MKPTR(JS_TAG_OBJECT, p);
-
-    x = 1;
-    
     obj = JS_NewObject(ctx);
     if (JS_IsException(obj))
         return JS_EXCEPTION;
@@ -36802,11 +36783,10 @@ void JS_SetPropertyFunctionList(JSContext *ctx, JSValueConst obj,
                                 const JSCFunctionListEntry *tab, int len)
 {
     int i;
-    printf("JS_SetPropertyFunctionList. Length:%d\n", len);
+
     for (i = 0; i < len; i++) {
         const JSCFunctionListEntry *e = &tab[i];
         JSAtom atom = find_atom(ctx, e->name);
-        printf("  %s\n", e->name);
         JS_InstantiateFunctionListItem(ctx, obj, atom, e);
         JS_FreeAtom(ctx, atom);
     }
@@ -52309,6 +52289,7 @@ void JS_AddIntrinsicBaseObjects(JSContext *ctx)
     int i;
     JSValueConst obj, number_obj;
     JSValue obj1;
+
     ctx->throw_type_error = JS_NewCFunction(ctx, js_throw_type_error, NULL, 0);
 
     /* add caller and arguments properties to throw a TypeError */
