@@ -49556,7 +49556,7 @@ static JSValue get_date_string(JSContext *ctx, JSValueConst this_val,
 
 /* OS dependent: return the UTC time in ms since 1970. */
 static int64_t date_now(void) {
-    return (int64_t)0;
+    return 0;
 }
 
 static JSValue js_date_constructor(JSContext *ctx, JSValueConst new_target,
