@@ -30,7 +30,10 @@
 
 #include "cutils.h"
 #include "libregexp.h"
-#include "printf.h" // printf is separate in hyperlight
+
+#ifdef HYPERLIGHT
+#include "printf.h"
+#endif
 
 /*
   TODO:

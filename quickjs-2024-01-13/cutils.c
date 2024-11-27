@@ -28,9 +28,11 @@
 #include <string.h>
 
 #include "cutils.h"
-#include "printf.h" // printf is separate in hyperlight
-#include "hyperlight_guest.h"
 
+#ifdef HYPERLIGHT
+#include "printf.h"
+#include "hyperlight_guest.h"
+#endif
 
 void pstrcpy(char *buf, int buf_size, const char *str)
 {
@@ -86,7 +88,11 @@ int has_suffix(const char *str, const char *suffix)
 
 static void *dbuf_default_realloc(void *opaque, void *ptr, size_t size)
 {
+#ifdef HYPERLIGHT
     return hlrealloc(ptr, size);
+#else
+    return realloc(ptr, size);
+#endif
 }
 
 void dbuf_init2(DynBuf *s, void *opaque, DynBufReallocFunc *realloc_func)

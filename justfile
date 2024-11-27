@@ -4,7 +4,7 @@ files := "quickjs_guest/main.c quickjs-2024-01-13/quickjs.c quickjs-2024-01-13/l
 alias b := build-quickjs-guest
 
 build-quickjs-guest:
-    clang {{includes}} {{files}} -DCONFIG_VERSION=\"2024-01-13\" -D_GNU_SOURCE -DCONFIG_BIGNUM -nostdinc -nostdlib -pie -D putchar=_putchar -Wno-macro-redefined -Wno-ignored-attributes -Wno-implicit-const-int-float-conversion --target=x86_64-unknown-linux-none -Wl,-entry,entrypoint -l hyperlight_guest_capi -L quickjs_guest/libs/debug -o guest
+    clang {{includes}} {{files}} -DHYPERLIGHT -DCONFIG_VERSION=\"2024-01-13\" -D_GNU_SOURCE -DCONFIG_BIGNUM -nostdinc -nostdlib -pie -D putchar=_putchar -Wno-macro-redefined -Wno-ignored-attributes -Wno-implicit-const-int-float-conversion --target=x86_64-unknown-linux-none -Wl,-entry,entrypoint -l hyperlight_guest_capi -L quickjs_guest/libs/debug -o guest
 
 # this will overwrite any code changes you've made to quickjs
 download-qjs:

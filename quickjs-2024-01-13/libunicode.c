@@ -30,7 +30,10 @@
 #include "cutils.h"
 #include "libunicode.h"
 #include "libunicode-table.h"
+
+#ifdef HYPERLIGHT
 #include "hyperlight_guest.h"
+#endif
 
 enum {
     RUN_TYPE_U,
@@ -384,7 +387,11 @@ static __maybe_unused void cr_dump(CharRange *cr)
 
 static void *cr_default_realloc(void *opaque, void *ptr, size_t size)
 {
+#ifdef HYPERLIGHT
     return hlrealloc(ptr, size);
+#else
+    return realloc(ptr, size);
+#endif
 }
 
 void cr_init(CharRange *cr, void *mem_opaque, DynBufReallocFunc *realloc_func)

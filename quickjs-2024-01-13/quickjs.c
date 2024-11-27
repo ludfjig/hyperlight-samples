@@ -32,21 +32,24 @@
 #include <time.h>
 #include <fenv.h>
 #include <math.h>
-// #if defined(__APPLE__)
-// #include <malloc/malloc.h>
-// #elif defined(__linux__)
-// #include <malloc.h>
-// #elif defined(__FreeBSD__)
-// #include <malloc_np.h>
-// #endif
+#if defined(__APPLE__)
+#include <malloc/malloc.h>
+#elif defined(__linux__) && !defined(HYPERLIGHT)
+#include <malloc.h>
+#elif defined(__FreeBSD__)
+#include <malloc_np.h>
+#endif
 
 #include "cutils.h"
 #include "list.h"
 #include "quickjs.h"
 #include "libregexp.h"
 #include "libbf.h"
+
+#ifdef HYPERLIGHT
 #include "printf.h"
 #include "hyperlight_guest.h"
+#endif
 
 #define OPTIMIZE         1
 #define SHORT_OPCODES    1
@@ -69,9 +72,9 @@
 
 /* define to include Atomics.* operations which depend on the OS
    threads */
-// #if !defined(EMSCRIPTEN)
-// #define CONFIG_ATOMICS
-// #endif
+#if !defined(EMSCRIPTEN) && !defined (HYPERLIGHT)
+#define CONFIG_ATOMICS
+#endif
 
 #if !defined(EMSCRIPTEN)
 /* enable stack limitation */
@@ -1703,11 +1706,13 @@ static size_t js_def_malloc_usable_size(const void *ptr)
     return _msize((void *)ptr);
 #elif defined(EMSCRIPTEN)
     return 0;
-#elif defined(__linux__)
+#elif defined (HYPERLIGHT)
     return 0;
+#elif defined(__linux__)
+    return malloc_usable_size((void *)ptr);
 #else
     /* change this to `return 0;` if compilation fails */
-    return 0;
+    return malloc_usable_size((void *)ptr);
 #endif
 }
 
@@ -1720,8 +1725,13 @@ static void *js_def_malloc(JSMallocState *s, size_t size)
 
     if (unlikely(s->malloc_size + size > s->malloc_limit))
         return NULL;
-
+#ifdef HYPERLIGHT
     ptr = hlmalloc(size);
+#else
+    ptr = malloc(size);
+#endif
+    if (!ptr)
+        return NULL;
 
     s->malloc_count++;
     s->malloc_size += js_def_malloc_usable_size(ptr) + MALLOC_OVERHEAD;
@@ -1735,7 +1745,11 @@ static void js_def_free(JSMallocState *s, void *ptr)
 
     s->malloc_count--;
     s->malloc_size -= js_def_malloc_usable_size(ptr) + MALLOC_OVERHEAD;
+#ifdef HYPERLIGHT
     hlfree(ptr);
+#else
+    free(ptr);
+#endif
 }
 
 static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
@@ -1751,13 +1765,20 @@ static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
     if (size == 0) {
         s->malloc_count--;
         s->malloc_size -= old_size + MALLOC_OVERHEAD;
+#ifdef HYPERLIGHT
         hlfree(ptr);
+#else
+        free(ptr);
+#endif
         return NULL;
     }
     if (s->malloc_size + size - old_size > s->malloc_limit)
         return NULL;
-
+#ifdef HYPERLIGHT
     ptr = hlrealloc(ptr, size);
+#else
+    ptr = realloc(ptr, size);
+#endif
     if (!ptr)
         return NULL;
 
@@ -43091,8 +43112,12 @@ static uint64_t xorshift64star(uint64_t *pstate)
 static void js_random_init(JSContext *ctx)
 {
     struct timeval tv;
-    //gettimeofday(&tv, NULL);
-    ctx->random_state = 0;
+#ifdef HYPERLIGHT
+    ctx->random_state = 1;
+#else
+    gettimeofday(&tv, NULL);
+    ctx->random_state = ((int64_t)tv.tv_sec * 1000000) + tv.tv_usec;
+#endif
     /* the state must be non zero */
     if (ctx->random_state == 0)
         ctx->random_state = 1;
@@ -43169,7 +43194,56 @@ static const JSCFunctionListEntry js_math_obj[] = {
    between UTC time and local time 'd' in minutes */
 static int getTimezoneOffset(int64_t time)
 {
-    return 0;
+    time_t ti;
+    int res;
+    
+    time /= 1000; /* convert to seconds */
+    if (sizeof(time_t) == 4) {
+        /* on 32-bit systems, we need to clamp the time value to the
+           range of `time_t`. This is better than truncating values to
+           32 bits and hopefully provides the same result as 64-bit
+           implementation of localtime_r.
+         */
+        if ((time_t)-1 < 0) {
+            if (time < INT32_MIN) {
+                time = INT32_MIN;
+            } else if (time > INT32_MAX) {
+                time = INT32_MAX;
+            }
+        } else {
+            if (time < 0) {
+                time = 0;
+            } else if (time > UINT32_MAX) {
+                time = UINT32_MAX;
+            }
+        }
+    }
+    ti = time;
+#if defined(_WIN32)
+    {
+        struct tm *tm;
+        time_t gm_ti, loc_ti;
+        
+        tm = gmtime(&ti);
+        gm_ti = mktime(tm);
+        
+        tm = localtime(&ti);
+        loc_ti = mktime(tm);
+
+        res = (gm_ti - loc_ti) / 60;
+    }
+#elif defined(HYPERLIGHT)
+    {
+        res = 0;
+    }
+#else
+    {
+        struct tm tm;
+        localtime_r(&ti, &tm);
+        res = -tm.tm_gmtoff / 60;
+    }
+#endif
+    return res;
 }
 
 #if 0
@@ -49556,7 +49630,13 @@ static JSValue get_date_string(JSContext *ctx, JSValueConst this_val,
 
 /* OS dependent: return the UTC time in ms since 1970. */
 static int64_t date_now(void) {
+#ifdef HYPERLIGHT 
     return 0;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+#endif
 }
 
 static JSValue js_date_constructor(JSContext *ctx, JSValueConst new_target,

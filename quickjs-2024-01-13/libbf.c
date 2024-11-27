@@ -34,7 +34,10 @@
 
 #include "cutils.h"
 #include "libbf.h"
+
+#ifdef HYPERLIGHT
 #include "printf.h"
+#endif
 
 /* enable it to check the multiplication result */
 //#define USE_MUL_CHECK

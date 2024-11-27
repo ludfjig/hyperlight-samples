@@ -1969,7 +1969,7 @@ static JSValue js_os_signal(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
-#if defined(__linux__) || defined(__APPLE__)
+#if (defined(__linux__) && !defined(HYPERLIGHT)) || defined(__APPLE__)
 static int64_t get_time_ms(void)
 {
     struct timespec ts;
