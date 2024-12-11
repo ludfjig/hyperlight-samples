@@ -1,0 +1,6 @@
+guest/libs/
+guest/include/
+host/target/
+quickjs-guest
+native
+
