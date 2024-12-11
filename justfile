@@ -24,8 +24,8 @@ download-qjs:
 
 patch-qjs:
     cd quickjs-2024-01-13 && patch -p1 < ../quickjs_hyperlight.patch
-    
+
 cp-from-adjacent-hl-repo:
     cd ../hyperlight && just tar-headers && just tar-static-lib
-    mkdir -p guest/libs && cp ../hyperlight-new/hyperlight-guest-c-api-linux.tar.gz guest/libs/ && tar -xvf guest/libs/hyperlight-guest-c-api-linux.tar.gz -C guest/libs/
-    mkdir -p guest/include && cp ../hyperlight-new/include.tar.gz guest/include/ && tar -xvf guest/include/include.tar.gz -C guest/include/
+    mkdir -p guest/libs && cp ../hyperlight/hyperlight-guest-c-api-linux.tar.gz guest/libs/ && tar -xvf guest/libs/hyperlight-guest-c-api-linux.tar.gz -C guest/libs/
+    mkdir -p guest/include && cp ../hyperlight/include.tar.gz guest/include/ && tar -xvf guest/include/include.tar.gz -C guest/include/
