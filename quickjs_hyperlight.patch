@@ -1,0 +1,307 @@
+diff -bur ../quickjs/quickjs-2024-01-13/cutils.c quickjs-2024-01-13/cutils.c
+--- ../quickjs/quickjs-2024-01-13/cutils.c	2024-01-13 02:20:39.000000000 -0800
++++ quickjs-2024-01-13/cutils.c	2024-12-02 15:31:46.284575696 -0800
+@@ -29,6 +29,11 @@
+ 
+ #include "cutils.h"
+ 
++#ifdef HYPERLIGHT
++#include "printf.h"
++#include "hyperlight_guest.h"
++#endif
++
+ void pstrcpy(char *buf, int buf_size, const char *str)
+ {
+     int c;
+diff -bur ../quickjs/quickjs-2024-01-13/libbf.c quickjs-2024-01-13/libbf.c
+--- ../quickjs/quickjs-2024-01-13/libbf.c	2024-01-13 02:20:39.000000000 -0800
++++ quickjs-2024-01-13/libbf.c	2024-11-26 16:10:51.960187780 -0800
+@@ -35,6 +35,10 @@
+ #include "cutils.h"
+ #include "libbf.h"
+ 
++#ifdef HYPERLIGHT
++#include "printf.h"
++#endif
++
+ /* enable it to check the multiplication result */
+ //#define USE_MUL_CHECK
+ #ifdef CONFIG_BIGNUM
+diff -bur ../quickjs/quickjs-2024-01-13/libregexp.c quickjs-2024-01-13/libregexp.c
+--- ../quickjs/quickjs-2024-01-13/libregexp.c	2024-01-13 02:20:39.000000000 -0800
++++ quickjs-2024-01-13/libregexp.c	2024-11-26 16:15:38.929896099 -0800
+@@ -31,6 +31,10 @@
+ #include "cutils.h"
+ #include "libregexp.h"
+ 
++#ifdef HYPERLIGHT
++#include "printf.h"
++#endif
++
+ /*
+   TODO:
+ 
+diff -bur ../quickjs/quickjs-2024-01-13/libunicode.c quickjs-2024-01-13/libunicode.c
+--- ../quickjs/quickjs-2024-01-13/libunicode.c	2024-01-13 02:20:39.000000000 -0800
++++ quickjs-2024-01-13/libunicode.c	2024-12-06 17:05:26.159801872 -0800
+@@ -31,6 +31,11 @@
+ #include "libunicode.h"
+ #include "libunicode-table.h"
+ 
++#ifdef HYPERLIGHT
++#include "hyperlight_guest.h"
++#include "printf.h"
++#endif
++
+ enum {
+     RUN_TYPE_U,
+     RUN_TYPE_L,
+diff -bur ../quickjs/quickjs-2024-01-13/quickjs-libc.c quickjs-2024-01-13/quickjs-libc.c
+--- ../quickjs/quickjs-2024-01-13/quickjs-libc.c	2024-01-13 02:20:39.000000000 -0800
++++ quickjs-2024-01-13/quickjs-libc.c	2024-11-26 16:20:40.359670976 -0800
+@@ -1969,7 +1969,7 @@
+     return JS_UNDEFINED;
+ }
+ 
+-#if defined(__linux__) || defined(__APPLE__)
++#if (defined(__linux__) && !defined(HYPERLIGHT)) || defined(__APPLE__)
+ static int64_t get_time_ms(void)
+ {
+     struct timespec ts;
+@@ -1987,16 +1987,12 @@
+ /* more portable, but does not work if the date is updated */
+ static int64_t get_time_ms(void)
+ {
+-    struct timeval tv;
+-    gettimeofday(&tv, NULL);
+-    return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
++    return 0;
+ }
+ 
+ static int64_t get_time_ns(void)
+ {
+-    struct timeval tv;
+-    gettimeofday(&tv, NULL);
+-    return (int64_t)tv.tv_sec * 1000000000 + (tv.tv_usec * 1000);
++    return 0;
+ }
+ #endif
+ 
+diff -bur ../quickjs/quickjs-2024-01-13/quickjs.c quickjs-2024-01-13/quickjs.c
+--- ../quickjs/quickjs-2024-01-13/quickjs.c	2024-01-13 02:20:39.000000000 -0800
++++ quickjs-2024-01-13/quickjs.c	2024-12-11 10:47:19.778165520 -0800
+@@ -34,7 +34,7 @@
+ #include <math.h>
+ #if defined(__APPLE__)
+ #include <malloc/malloc.h>
+-#elif defined(__linux__)
++#elif defined(__linux__) && !defined(HYPERLIGHT)
+ #include <malloc.h>
+ #elif defined(__FreeBSD__)
+ #include <malloc_np.h>
+@@ -46,6 +46,11 @@
+ #include "libregexp.h"
+ #include "libbf.h"
+ 
++#ifdef HYPERLIGHT
++#include "printf.h"
++#include "hyperlight_guest.h"
++#endif
++
+ #define OPTIMIZE         1
+ #define SHORT_OPCODES    1
+ #if defined(EMSCRIPTEN)
+@@ -67,7 +72,7 @@
+ 
+ /* define to include Atomics.* operations which depend on the OS
+    threads */
+-#if !defined(EMSCRIPTEN)
++#if !defined(EMSCRIPTEN) && !defined (HYPERLIGHT)
+ #define CONFIG_ATOMICS
+ #endif
+ 
+@@ -1701,6 +1706,8 @@
+     return _msize((void *)ptr);
+ #elif defined(EMSCRIPTEN)
+     return 0;
++#elif defined (HYPERLIGHT)
++    return 0;
+ #elif defined(__linux__)
+     return malloc_usable_size((void *)ptr);
+ #else
+@@ -2172,6 +2179,7 @@
+     JS_AddIntrinsicTypedArrays(ctx);
+     JS_AddIntrinsicPromise(ctx);
+     JS_AddIntrinsicBigInt(ctx);
++    JS_AddIntrinsicBigFloat(ctx);
+     return ctx;
+ }
+ 
+@@ -6228,7 +6236,7 @@
+ 
+ void JS_DumpMemoryUsage(FILE *fp, const JSMemoryUsage *s, JSRuntime *rt)
+ {
+-    fprintf(fp, "QuickJS memory usage -- "
++    printf("QuickJS memory usage -- "
+ #ifdef CONFIG_BIGNUM
+             "BigNum "
+ #endif
+@@ -6254,14 +6262,14 @@
+                 unsigned int size1 = js_malloc_usable_size_rt(rt, p);
+                 if (size1 >= size) {
+                     usage_size_ok = 1;
+-                    fprintf(fp, "  %3u + %-2u  %s\n",
++                    printf("  %3u + %-2u  %s\n",
+                             size, size1 - size, object_types[i].name);
+                 }
+                 js_free_rt(rt, p);
+             }
+         }
+         if (!usage_size_ok) {
+-            fprintf(fp, "  malloc_usable_size unavailable\n");
++            printf("  malloc_usable_size unavailable\n");
+         }
+         {
+             int obj_classes[JS_CLASS_INIT_COUNT + 1] = { 0 };
+@@ -6275,82 +6283,82 @@
+                     obj_classes[min_uint32(p->class_id, JS_CLASS_INIT_COUNT)]++;
+                 }
+             }
+-            fprintf(fp, "\n" "JSObject classes\n");
++            printf("\n" "JSObject classes\n");
+             if (obj_classes[0])
+-                fprintf(fp, "  %5d  %2.0d %s\n", obj_classes[0], 0, "none");
++                printf("  %5d  %2.0d %s\n", obj_classes[0], 0, "none");
+             for (class_id = 1; class_id < JS_CLASS_INIT_COUNT; class_id++) {
+                 if (obj_classes[class_id] && class_id < rt->class_count) {
+                     char buf[ATOM_GET_STR_BUF_SIZE];
+-                    fprintf(fp, "  %5d  %2.0d %s\n", obj_classes[class_id], class_id,
++                    printf("  %5d  %2.0d %s\n", obj_classes[class_id], class_id,
+                             JS_AtomGetStrRT(rt, buf, sizeof(buf), rt->class_array[class_id].class_name));
+                 }
+             }
+             if (obj_classes[JS_CLASS_INIT_COUNT])
+-                fprintf(fp, "  %5d  %2.0d %s\n", obj_classes[JS_CLASS_INIT_COUNT], 0, "other");
++                printf("  %5d  %2.0d %s\n", obj_classes[JS_CLASS_INIT_COUNT], 0, "other");
+         }
+-        fprintf(fp, "\n");
++        printf("\n");
+     }
+ #endif
+-    fprintf(fp, "%-20s %8s %8s\n", "NAME", "COUNT", "SIZE");
++    printf("%-20s %8s %8s\n", "NAME", "COUNT", "SIZE");
+ 
+     if (s->malloc_count) {
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per block)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per block)\n",
+                 "memory allocated", s->malloc_count, s->malloc_size,
+                 (double)s->malloc_size / s->malloc_count);
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%d overhead, %0.1f average slack)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%d overhead, %0.1f average slack)\n",
+                 "memory used", s->memory_used_count, s->memory_used_size,
+                 MALLOC_OVERHEAD, ((double)(s->malloc_size - s->memory_used_size) /
+                                   s->memory_used_count));
+     }
+     if (s->atom_count) {
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per atom)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per atom)\n",
+                 "atoms", s->atom_count, s->atom_size,
+                 (double)s->atom_size / s->atom_count);
+     }
+     if (s->str_count) {
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per string)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per string)\n",
+                 "strings", s->str_count, s->str_size,
+                 (double)s->str_size / s->str_count);
+     }
+     if (s->obj_count) {
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
+                 "objects", s->obj_count, s->obj_size,
+                 (double)s->obj_size / s->obj_count);
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per object)\n",
+                 "  properties", s->prop_count, s->prop_size,
+                 (double)s->prop_count / s->obj_count);
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per shape)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per shape)\n",
+                 "  shapes", s->shape_count, s->shape_size,
+                 (double)s->shape_size / s->shape_count);
+     }
+     if (s->js_func_count) {
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"\n",
++        printf("%-20s %8"PRId64" %8"PRId64"\n",
+                 "bytecode functions", s->js_func_count, s->js_func_size);
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
++        printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
+                 "  bytecode", s->js_func_count, s->js_func_code_size,
+                 (double)s->js_func_code_size / s->js_func_count);
+         if (s->js_func_pc2line_count) {
+-            fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
++            printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per function)\n",
+                     "  pc2line", s->js_func_pc2line_count,
+                     s->js_func_pc2line_size,
+                     (double)s->js_func_pc2line_size / s->js_func_pc2line_count);
+         }
+     }
+     if (s->c_func_count) {
+-        fprintf(fp, "%-20s %8"PRId64"\n", "C functions", s->c_func_count);
++        printf("%-20s %8"PRId64"\n", "C functions", s->c_func_count);
+     }
+     if (s->array_count) {
+-        fprintf(fp, "%-20s %8"PRId64"\n", "arrays", s->array_count);
++        printf("%-20s %8"PRId64"\n", "arrays", s->array_count);
+         if (s->fast_array_count) {
+-            fprintf(fp, "%-20s %8"PRId64"\n", "  fast arrays", s->fast_array_count);
+-            fprintf(fp, "%-20s %8"PRId64" %8"PRId64"  (%0.1f per fast array)\n",
++            printf("%-20s %8"PRId64"\n", "  fast arrays", s->fast_array_count);
++            printf("%-20s %8"PRId64" %8"PRId64"  (%0.1f per fast array)\n",
+                     "  elements", s->fast_array_elements,
+                     s->fast_array_elements * (int)sizeof(JSValue),
+                     (double)s->fast_array_elements / s->fast_array_count);
+         }
+     }
+     if (s->binary_object_count) {
+-        fprintf(fp, "%-20s %8"PRId64" %8"PRId64"\n",
++        printf("%-20s %8"PRId64" %8"PRId64"\n",
+                 "binary objects", s->binary_object_count, s->binary_object_size);
+     }
+ }
+@@ -43091,8 +43099,12 @@
+ static void js_random_init(JSContext *ctx)
+ {
+     struct timeval tv;
++#ifdef HYPERLIGHT
++    ctx->random_state = 1;
++#else
+     gettimeofday(&tv, NULL);
+     ctx->random_state = ((int64_t)tv.tv_sec * 1000000) + tv.tv_usec;
++#endif
+     /* the state must be non zero */
+     if (ctx->random_state == 0)
+         ctx->random_state = 1;
+@@ -43207,6 +43219,10 @@
+ 
+         res = (gm_ti - loc_ti) / 60;
+     }
++#elif defined(HYPERLIGHT)
++    {
++        res = 0;
++    }
+ #else
+     {
+         struct tm tm;
+@@ -49601,9 +49617,13 @@
+ 
+ /* OS dependent: return the UTC time in ms since 1970. */
+ static int64_t date_now(void) {
++#ifdef HYPERLIGHT 
++    return 0;
++#else
+     struct timeval tv;
+     gettimeofday(&tv, NULL);
+     return (int64_t)tv.tv_sec * 1000 + (tv.tv_usec / 1000);
++#endif
+ }
+ 
+ static JSValue js_date_constructor(JSContext *ctx, JSValueConst new_target,

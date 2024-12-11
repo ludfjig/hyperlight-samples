@@ -88,11 +88,7 @@ int has_suffix(const char *str, const char *suffix)
 
 static void *dbuf_default_realloc(void *opaque, void *ptr, size_t size)
 {
-#ifdef HYPERLIGHT
-    return hlrealloc(ptr, size);
-#else
     return realloc(ptr, size);
-#endif
 }
 
 void dbuf_init2(DynBuf *s, void *opaque, DynBufReallocFunc *realloc_func)

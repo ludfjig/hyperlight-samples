@@ -1725,14 +1725,11 @@ static void *js_def_malloc(JSMallocState *s, size_t size)
 
     if (unlikely(s->malloc_size + size > s->malloc_limit))
         return NULL;
-#ifdef HYPERLIGHT
-    ptr = hlmalloc(size);
-#else
+
     ptr = malloc(size);
-#endif
     if (!ptr)
         return NULL;
-
+    
     s->malloc_count++;
     s->malloc_size += js_def_malloc_usable_size(ptr) + MALLOC_OVERHEAD;
     return ptr;
@@ -1745,11 +1742,7 @@ static void js_def_free(JSMallocState *s, void *ptr)
 
     s->malloc_count--;
     s->malloc_size -= js_def_malloc_usable_size(ptr) + MALLOC_OVERHEAD;
-#ifdef HYPERLIGHT
-    hlfree(ptr);
-#else
     free(ptr);
-#endif
 }
 
 static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
@@ -1765,20 +1758,13 @@ static void *js_def_realloc(JSMallocState *s, void *ptr, size_t size)
     if (size == 0) {
         s->malloc_count--;
         s->malloc_size -= old_size + MALLOC_OVERHEAD;
-#ifdef HYPERLIGHT
-        hlfree(ptr);
-#else
         free(ptr);
-#endif
         return NULL;
     }
     if (s->malloc_size + size - old_size > s->malloc_limit)
         return NULL;
-#ifdef HYPERLIGHT
-    ptr = hlrealloc(ptr, size);
-#else
+
     ptr = realloc(ptr, size);
-#endif
     if (!ptr)
         return NULL;
 
@@ -2193,6 +2179,7 @@ JSContext *JS_NewContext(JSRuntime *rt)
     JS_AddIntrinsicTypedArrays(ctx);
     JS_AddIntrinsicPromise(ctx);
     JS_AddIntrinsicBigInt(ctx);
+    JS_AddIntrinsicBigFloat(ctx);
     return ctx;
 }
 
