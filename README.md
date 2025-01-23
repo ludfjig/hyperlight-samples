@@ -1,4 +1,11 @@
-1. Make sure [hyperlight](https://github.com/hyperlight-dev/hyperlight) is cloned adjacent to this repo and that the folder is named "hyperlight". The folder structure should look like this
+# Run javascript in Hyperlight using quickjs
+
+## Requirements
+`rustup show` must have active rustc version >=1.80, if not run `rustup update`
+
+## Steps to build and run 
+1. Clone this repo
+2. Make sure [hyperlight](https://github.com/hyperlight-dev/hyperlight) is cloned adjacent to this repo. The default `main` branch of hyperlight should work, but in case it doesn't, try checking out commit `003bc162f9fa2fb43eb849fdd3781f5780f318eb`, which is the SHA this sample was most recently tested on. The folder structure should look like this
 ```bash
 $ ls
 hyperlight  hyperlight-samples
