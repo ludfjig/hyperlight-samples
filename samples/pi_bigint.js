@@ -108,4 +108,4 @@ function main(args) {
 }
 
 // calculate pi with 10000 digits
-main([10000000]);
+main([10000]);

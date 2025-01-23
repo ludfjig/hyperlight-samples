@@ -23,7 +23,7 @@ hyperlight  hyperlight-samples
     - `just download-qjs` to download and extract quickjs source code
     - `just patch-qjs` to patch quickjs source code
     - `just build-qjs-guest` to compile the guest
-    - `just run samples/pi_bigfloat.js` to compile and run the host cli application, passing in a javascript file to be executed. There are more samples in the samples folder.
+    - `just run samples/pi_bigfloat.js` to compile and run the host cli application, passing in a javascript file to be executed. This specific javascript program calculates 1 million digits of pi. There are more samples in the samples folder. The `date.js` file uses Date.now(), which is stubbed out since the guest currently has not way of getting the current date/time, but it should be easy to implement this using a host function (which is what we do for hyperlight-js). 
 
 ### minor tweaks
 
