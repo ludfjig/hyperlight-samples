@@ -1,11 +1,14 @@
-1. Make sure you have Hyperlight repo cloned to a repo adjacent to this one, and check out the following Hyperlight branch in that repo
-        ``` git fetch origin pull/104/head:musl_subtree && git checkout musl_subtree```, (replace origin with the name of your upstream remote). This step will not be necessary once the PR merges.
-2. In this hyperlight-samples repo, run :
-3. `just cp-from-adjacent-hl-repo` to copy over header and lib files required for building the guest
-4. `just download-qjs` to download quickjs
-5. `just patch-qjs` to patch quickjs.
-6. `just build-qjs-guest` to compile the guest
-6. `just run samples/pi_bigfloat.js` to compile and run the host cli application, passing in a javascript file to be executed. There are more samples in the samples folder.
+1. Make sure [hyperlight](https://github.com/hyperlight-dev/hyperlight) is cloned adjacent to this repo and that the folder is named "hyperlight". The folder structure should look like this
+```bash
+$ ls
+hyperlight  hyperlight-samples
+```
+2. `cd` into `hyperlight-samples`, and run all the following commands from within `hyperlight-samples` folder:
+    - `just cp-from-adjacent-hl-repo` to copy over header and lib files required for building the js guest
+    - `just download-qjs` to download quickjs
+    - `just patch-qjs` to patch quickjs.
+    - `just build-qjs-guest` to compile the guest
+    - `just run samples/pi_bigfloat.js` to compile and run the host cli application, passing in a javascript file to be executed. There are more samples in the samples folder.
 
 ### minor tweaks
 
