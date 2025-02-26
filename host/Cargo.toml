@@ -4,6 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-hyperlight-host = { git = "https://github.com/hyperlight-dev/hyperlight", rev = "003bc16" }
-log = "0.4.22"
-env_logger = "0.11.5"
+hyperlight-host = "0.2.0"

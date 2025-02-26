@@ -6,7 +6,7 @@ build: (build-qjs-guest) (build-outside-hl)
 # This will build a hyperlight guest by linking hyperlight's libc, and the resulting binary can be run inside hyperlight.
 # The resulting binary can be used by running `cargo run -- --eval '5+5'` inside 'host' directory.
 build-qjs-guest:
-    clang {{includes}} {{files}} -O3 -DHYPERLIGHT -DCONFIG_VERSION=\"2024-01-13\" -D_GNU_SOURCE -DCONFIG_BIGNUM -nostdinc -nostdlib -pie -D putchar=_putchar -Wno-macro-redefined -Wno-ignored-attributes -Wno-implicit-const-int-float-conversion --target=x86_64-unknown-linux-none -Wl,-entry,entrypoint -l hyperlight_guest_capi -L guest/libs/release -o quickjs-guest
+    clang {{includes}} {{files}} -O3 -DHYPERLIGHT -DCONFIG_VERSION=\"2024-01-13\" -D_GNU_SOURCE -DCONFIG_BIGNUM -nostdinc -nostdlib -fpie -D putchar=_putchar -Wno-macro-redefined -Wno-ignored-attributes -Wno-implicit-const-int-float-conversion --target=x86_64-unknown-elf -e entrypoint -l hyperlight_guest_capi -L guest/libs/release -o quickjs-guest
 
 # this will build the guest by linking regular libc, and the resulting binary can run be run outside of hyperlight
 # by running `./outside-hl`.
@@ -14,7 +14,7 @@ build-outside-hl:
     clang {{files}} -O3 -I quickjs-2024-01-13 -DCONFIG_VERSION=\"2024-01-13\" -D_GNU_SOURCE -lm -DCONFIG_BIGNUM -Wno-implicit-const-int-float-conversion -o native
 
 run file:
-    cd host && cargo run -- ../{{ file }}
+    cd host && cargo run < ../{{ file }}
 
 # this will overwrite any code changes you've made to quickjs
 download-qjs:
@@ -25,7 +25,10 @@ download-qjs:
 patch-qjs:
     cd quickjs-2024-01-13 && patch -p1 < ../quickjs_hyperlight.patch
 
-cp-from-adjacent-hl-repo:
-    cd ../hyperlight && just tar-headers && just tar-static-lib
-    mkdir -p guest/libs && cp ../hyperlight/hyperlight-guest-c-api-linux.tar.gz guest/libs/ && tar -xvf guest/libs/hyperlight-guest-c-api-linux.tar.gz -C guest/libs/
-    mkdir -p guest/include && cp ../hyperlight/include.tar.gz guest/include/ && tar -xvf guest/include/include.tar.gz -C guest/include/
+download-hl-headers-and-lib:
+    wget https://github.com/hyperlight-dev/hyperlight/releases/download/v0.2.0/include.tar.gz -P guest/include
+    tar -xvf guest/include/include.tar.gz -C guest/include/
+    rm guest/include/include.tar.gz
+    wget https://github.com/hyperlight-dev/hyperlight/releases/download/v0.2.0/hyperlight-guest-c-api-linux.tar.gz -P guest/libs
+    tar -xvf guest/libs/hyperlight-guest-c-api-linux.tar.gz -C guest/libs
+    rm guest/libs/hyperlight-guest-c-api-linux.tar.gz
