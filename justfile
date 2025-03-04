@@ -8,11 +8,6 @@ build: (build-qjs-guest) (build-outside-hl)
 build-qjs-guest:
     clang {{includes}} {{files}} -O3 -DHYPERLIGHT -DCONFIG_VERSION=\"2024-01-13\" -D_GNU_SOURCE -DCONFIG_BIGNUM -nostdinc -nostdlib -fpie -D putchar=_putchar -Wno-macro-redefined -Wno-ignored-attributes -Wno-implicit-const-int-float-conversion --target=x86_64-unknown-elf -e entrypoint -l hyperlight_guest_capi -L guest/libs/release -o quickjs-guest
 
-# this will build the guest by linking regular libc, and the resulting binary can run be run outside of hyperlight
-# by running `./outside-hl`.
-build-outside-hl:
-    clang {{files}} -O3 -I quickjs-2024-01-13 -DCONFIG_VERSION=\"2024-01-13\" -D_GNU_SOURCE -lm -DCONFIG_BIGNUM -Wno-implicit-const-int-float-conversion -o native
-
 run file:
     cd host && cargo run < ../{{ file }}
 

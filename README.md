@@ -20,4 +20,4 @@ git clone git@github.com:ludfjig/hyperlight-samples.git
 
 ### minor tweaks
 
-You might need to increase the MEMORY_LIMIT and BUFFER_LIMIT in `main.rs`, in case the current memory limits are not enough to execute your javascript code without erroring out.
+You might need to increase the MEMORY_LIMIT and BUFFER_LIMIT in `main.rs`, in case the current memory limits are not enough to execute your particular javascript.

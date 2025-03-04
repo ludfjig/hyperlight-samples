@@ -3,12 +3,7 @@
 #include <string.h>
 
 #include "quickjs.h"
-
-#ifdef HYPERLIGHT
 #include "hyperlight_guest.h"
-#else
-#include <stdlib.h>
-#endif 
 
 // evaluate the given raw javascript expression and return the result as a string
 const char *guest_function(const char *code) {
@@ -39,7 +34,6 @@ const char *guest_function(const char *code) {
     return st;
 }
 
-#ifdef HYPERLIGHT
 HYPERLIGHT_WRAP_FUNCTION(guest_function, String, 1, String);
 
 void hyperlight_main(void) {
@@ -51,25 +45,3 @@ void hyperlight_main(void) {
 hl_Vec *c_guest_dispatch_function(const hl_FunctionCall *function_call) {
     return NULL;
 }
-#else
-// If you want to run this code outside of hyperlight, you can use the following main function
-int main(int argc, char* argv[]) {
-    char* buffer = NULL;
-    size_t len = 0;
-    const char * res;
-
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s <file_path>\n", argv[0]);
-        return 1;
-    }
-    char* file_path = argv[1];
-    FILE * fp = fopen(file_path, "rb");
-    ssize_t bytes_read = getdelim(&buffer, &len, '\0', fp);
-
-    res = guest_function(buffer);
-    printf("%s\n", res);
-    free(buffer);
-    fclose(fp);
-    return 0;
-}
-#endif
