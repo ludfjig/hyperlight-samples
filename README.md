@@ -1,5 +1,5 @@
 # Run javascript in Hyperlight using quickjs
-This is a small demo application of how to use [Hyperlight](https://github.com/hyperlight-dev/hyperlight) to run isolated JavaScript in a microVM using quickjs. 
+This is a small demo application of how to use [Hyperlight](https://github.com/hyperlight-dev/hyperlight) to run isolated JavaScript in a microVM using quickjs. For a video walkthrough, please see [this video](https://vimeo.com/1063746996?share=copy)
 
 ## Requirements
 - A x86_64 linux machine (or WSL) with `clang` installed (I used 18.1.8 but I believe most versions should work).
