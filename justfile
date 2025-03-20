@@ -1,7 +1,7 @@
 includes := "-I guest/include/include -I guest/include/musl/include -I guest/include/musl/arch/x86_64/ -I guest/include/printf -I guest/include -I quickjs-2024-01-13"
 files := "guest/main.c quickjs-2024-01-13/quickjs.c quickjs-2024-01-13/libregexp.c quickjs-2024-01-13/libunicode.c quickjs-2024-01-13/cutils.c quickjs-2024-01-13/libbf.c"
 
-build: (build-qjs-guest) (build-outside-hl)
+build: (build-qjs-guest)
 
 # This will build a hyperlight guest by linking hyperlight's libc, and the resulting binary can be run inside hyperlight.
 # The resulting binary can be used by running `cargo run -- --eval '5+5'` inside 'host' directory.
